@@ -1,29 +1,31 @@
-#=
-Implementing Shortest Path on a grid using Dijkstra's
-=#
+# Coding the A-Star Algorithm
+# ... on a grid!
 
 using Random, Plots, DataStructures
 
-# random init of obstacles
+function manhattan_distance(p1, p2)
+    return sum(abs.(p1 .- p2)) # vectorized to all dims
+end
+
 function generate_grid(rows, cols, obstacle_prob=0.2)
-    grid = rand(rows, cols) .> obstacle_prob # True = free space, False = obstacle
+    grid = rand(rows, cols) .> obstacle_prob # broadcast probability
     return grid
 end
 
-# Dijkstra's Algorithm
-# https://stanford.edu/class/ee365/lectures/dijkstra.pdf
-function dijkstra(grid, start, goal)
+# A* Algorithm for Path between two vertices
+# https://stanford.edu/class/ee365/lectures/astar.pdf
+function a_star(grid, start, goal)
     rows, cols = size(grid)
-    frontier = PriorityQueue{Tuple{Int, Int}, Int}()
-    push!(frontier, start => 0)
+    open_set = PriorityQueue{Tuple{Int, Int}, Int}()
+    push!(open_set, start => 0)
 
-    # The Closed Set => wrapped by the frontier
+    # The Closed Set => wrapped by the open_set
     dist = Dict{Tuple{Int, Int}, Int}(start => 0) 
     closed = Dict{Tuple{Int, Int}, Tuple{Int, Int}}()
     directions = [(0,1), (1,0), (0,-1), (-1,0)]
 
-    while !isempty(frontier)
-        current = dequeue!(frontier)
+    while !isempty(open_set)
+        current = dequeue!(open_set)
 
         if current == goal
             println("Found Destination")
@@ -34,7 +36,7 @@ function dijkstra(grid, start, goal)
                 current = closed[current]
             end
             pushfirst!(path, start)
-            plot_grid(grid, closed, path, frontier, start, goal)
+            plot_grid(grid, closed, path, open_set, start, goal)
             return path
         end
 
@@ -45,7 +47,7 @@ function dijkstra(grid, start, goal)
                 if get(dist, neighbor, Inf) > new_cost
                     closed[neighbor] = current
                     dist[neighbor] = new_cost
-                    push!(frontier, neighbor => new_cost)
+                    push!(open_set, neighbor => new_cost + manhattan_distance(neighbor, goal))
                 end
             end
         end
@@ -54,7 +56,7 @@ function dijkstra(grid, start, goal)
 end
 
 # Plot grid + discovered path
-function plot_grid(grid, came_from, path, frontier, start, goal)
+function plot_grid(grid, came_from, path, open_set, start, goal)
     rows, cols = size(grid)
     img = ones(rows, cols) # White background
     
@@ -71,7 +73,7 @@ function plot_grid(grid, came_from, path, frontier, start, goal)
     end
     
     # Priority queue nodes
-    for node_pair in frontier # Corrected line
+    for node_pair in open_set # Corrected line
         node = node_pair.first # Extract the node coordinates
         img[node...] = 0.8 # Yellow
     end
@@ -85,7 +87,7 @@ function plot_grid(grid, came_from, path, frontier, start, goal)
     img[goal...] = 0.7 # Goal (lighter gray)
     
     heatmap(img, c=:viridis, axis=false, legend=false)
-    savefig("dijkstra_path.png")
+    savefig("a_star_path.png")
 end
 
 # World Definition
@@ -97,6 +99,6 @@ grid = generate_grid(rows, cols)
 grid[start...] = true
 grid[goal...] = true
 
-println("Determining path via Dijkstra's Algorithm")
-path = dijkstra(grid, start, goal)
+println("Determining path via A* Algorithm")
+path = a_star(grid, start, goal)
 println("All done")
